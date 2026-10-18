@@ -1,0 +1,1378 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>待辦事項管理系統</title>
+  <style>
+    /* -------------------------------------------------------------------------- */
+    /* 1. 全局變數與重置 (CSS Variables & Reset)                                   */
+    /* -------------------------------------------------------------------------- */
+    :root {
+      --bg-main: #f8faf9;
+      --surface: #ffffff;
+      --border-color: #e2e8f0;
+      
+      /* 柔和綠色主調 */
+      --primary: #2e7d32;
+      --primary-hover: #1b5e20;
+      --primary-light: #e8f5e9;
+      --primary-border: #a5d6a7;
+
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --text-light: #94a3b8;
+
+      --danger: #ef4444;
+      --danger-hover: #dc2626;
+      --danger-light: #fef2f2;
+
+      --warning-bg: #fffbeeb0;
+      --warning-border: #fde68a;
+      --warning-text: #b45309;
+
+      /* 分類顏色卡 */
+      --cat-academic: #3b82f6;
+      --cat-academic-bg: #eff6ff;
+      --cat-life: #10b981;
+      --cat-life-bg: #ecfdf5;
+      --cat-work: #f59e0b;
+      --cat-work-bg: #fffbeb;
+      --cat-other: #8b5cf6;
+      --cat-other-bg: #f5f3ff;
+
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+      --shadow-lg: 0 10px 25px rgba(0,0,0,0.1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      line-height: 1.5;
+      padding: 24px 16px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /* 2. 標題與簡介區                                                            */
+    /* -------------------------------------------------------------------------- */
+    .header {
+      margin-bottom: 24px;
+      text-align: left;
+    }
+
+    .header h1 {
+      font-size: 1.875rem;
+      font-weight: 700;
+      color: var(--primary-hover);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-top: 4px;
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /* 3. 統計資訊區 (Statistics Grid)                                            */
+    /* -------------------------------------------------------------------------- */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      text-align: center;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .stat-card .stat-value {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-top: 4px;
+    }
+
+    .stat-card .stat-label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .stat-card.highlight .stat-value {
+      color: var(--primary);
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /* 4. 搜尋與篩選控制區                                                        */
+    /* -------------------------------------------------------------------------- */
+    .control-panel {
+      background: var(--surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .search-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .search-input-wrapper {
+      flex: 1;
+      position: relative;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 10px 14px;
+      font-size: 0.95rem;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .search-input:focus {
+      border-color: var(--primary);
+    }
+
+    .filters-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding-top: 12px;
+      border-top: 1px dashed var(--border-color);
+    }
+
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .filter-title {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      min-width: 70px;
+    }
+
+    .filter-options {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    /* 按鈕與標籤樣式 */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 16px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      border-radius: var(--radius-md);
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: #f1f5f9;
+      color: var(--text-main);
+    }
+
+    .btn:hover {
+      background: #e2e8f0;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #ffffff;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    .btn-danger-text {
+      background: transparent;
+      color: var(--danger);
+      border-color: transparent;
+    }
+
+    .btn-danger-text:hover {
+      background: var(--danger-light);
+    }
+
+    .btn-sm {
+      padding: 4px 10px;
+      font-size: 0.8rem;
+    }
+
+    .chip {
+      padding: 6px 12px;
+      font-size: 0.85rem;
+      border-radius: 20px;
+      border: 1px solid var(--border-color);
+      background: var(--surface);
+      color: var(--text-muted);
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.2s;
+    }
+
+    .chip:hover {
+      border-color: var(--primary-border);
+      color: var(--primary);
+    }
+
+    .chip.active {
+      background: var(--primary-light);
+      border-color: var(--primary-border);
+      color: var(--primary-hover);
+      font-weight: 600;
+    }
+
+    .checkbox-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+
+    .checkbox-chip input {
+      display: none;
+    }
+
+    /* 逾期切換按鈕 */
+    .toggle-chip {
+      padding: 6px 12px;
+      font-size: 0.85rem;
+      border-radius: 20px;
+      border: 1px solid var(--border-color);
+      background: var(--surface);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .toggle-chip.active {
+      background: var(--danger-light);
+      border-color: #fca5a5;
+      color: var(--danger);
+      font-weight: 600;
+    }
+
+    .clear-filter-btn {
+      margin-left: auto;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-decoration: underline;
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 4px 8px;
+    }
+
+    .clear-filter-btn:hover {
+      color: var(--danger);
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /* 5. 任務清單區 (Task List)                                                  */
+    /* -------------------------------------------------------------------------- */
+    .task-section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .task-section-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .task-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .task-item {
+      background: var(--surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .task-item:hover {
+      box-shadow: var(--shadow-md);
+    }
+
+    .task-item.completed {
+      background: #f8fafc;
+      opacity: 0.75;
+    }
+
+    .task-checkbox {
+      width: 20px;
+      height: 20px;
+      accent-color: var(--primary);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .task-content {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .task-main-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .task-title {
+      font-size: 1rem;
+      font-weight: 500;
+      color: var(--text-main);
+      word-break: break-word;
+    }
+
+    .task-item.completed .task-title {
+      text-decoration: line-through;
+      color: var(--text-light);
+    }
+
+    /* 分類 Tag */
+    .tag {
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .tag-academic { background: var(--cat-academic-bg); color: var(--cat-academic); }
+    .tag-life { background: var(--cat-life-bg); color: var(--cat-life); }
+    .tag-work { background: var(--cat-work-bg); color: var(--cat-work); }
+    .tag-other { background: var(--cat-other-bg); color: var(--cat-other); }
+
+    /* 截止日期與逾期 Tag */
+    .date-tag {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #f1f5f9;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .overdue-tag {
+      font-size: 0.75rem;
+      background: var(--danger-light);
+      color: var(--danger);
+      border: 1px solid #fca5a5;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .task-actions {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /* 6. 空狀態與無結果提示區 (Empty States)                                     */
+    /* -------------------------------------------------------------------------- */
+    .empty-state {
+      background: var(--surface);
+      border: 2px dashed var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 48px 24px;
+      text-align: center;
+      margin-top: 12px;
+    }
+
+    .empty-icon {
+      font-size: 3rem;
+      margin-bottom: 12px;
+      display: block;
+    }
+
+    .empty-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: var(--text-main);
+      margin-bottom: 6px;
+    }
+
+    .empty-desc {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 18px;
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /* 7. 模態視窗 / 彈出視窗 (Modal System)                                      */
+    /* -------------------------------------------------------------------------- */
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(15, 23, 42, 0.4);
+      backdrop-filter: blur(2px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      padding: 16px;
+    }
+
+    .modal-backdrop.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal {
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 500px;
+      box-shadow: var(--shadow-lg);
+      overflow: hidden;
+      transform: translateY(10px);
+      transition: transform 0.2s ease;
+    }
+
+    .modal-backdrop.active .modal {
+      transform: translateY(0);
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-header h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.25rem;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    .modal-body {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group label {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .form-group label .required {
+      color: var(--danger);
+      margin-left: 2px;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 0.95rem;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      outline: none;
+      font-family: inherit;
+    }
+
+    .form-control:focus {
+      border-color: var(--primary);
+    }
+
+    textarea.form-control {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .modal-footer {
+      padding: 12px 20px 20px 20px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /* 8. 短暫提示訊息 (Toast Notification)                                      */
+    /* -------------------------------------------------------------------------- */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 2000;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .toast {
+      background: #1e293b;
+      color: #ffffff;
+      padding: 10px 18px;
+      border-radius: var(--radius-md);
+      font-size: 0.9rem;
+      box-shadow: var(--shadow-lg);
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.25s, transform 0.25s;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /* 9. 響應式微調 (Responsive Adjustments)                                     */
+    /* -------------------------------------------------------------------------- */
+    @media (max-width: 640px) {
+      body {
+        padding: 16px 10px;
+      }
+
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .search-row {
+        flex-direction: column;
+      }
+
+      .filter-group {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+      }
+
+      .clear-filter-btn {
+        margin-left: 0;
+        margin-top: 4px;
+      }
+
+      .task-item {
+        align-items: flex-start;
+      }
+
+      .task-actions {
+        margin-top: 4px;
+      }
+
+      .toast-container {
+        left: 16px;
+        right: 16px;
+        bottom: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- 1. 頁面標題區 -->
+    <header class="header">
+      <h1>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        待辦事項管理系統
+      </h1>
+      <p>清楚掌握日常、學業與工作進度，高效管理每一天。</p>
+    </header>
+
+    <!-- 2. 全域統計資訊區 (不受篩選影響) -->
+    <section class="stats-grid" aria-label="任務統計">
+      <div class="stat-card">
+        <div class="stat-label">全部任務</div>
+        <div class="stat-value" id="stat-total">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">待完成</div>
+        <div class="stat-value" id="stat-pending">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">已完成</div>
+        <div class="stat-value" id="stat-completed">0</div>
+      </div>
+      <div class="stat-card highlight">
+        <div class="stat-label">完成率</div>
+        <div class="stat-value" id="stat-rate">0%</div>
+      </div>
+    </section>
+
+    <!-- 3. 搜尋與多條件篩選控制區 -->
+    <section class="control-panel" aria-label="搜尋與篩選操作">
+      <div class="search-row">
+        <div class="search-input-wrapper">
+          <input type="text" id="search-input" class="search-input" placeholder="搜尋任務名稱..." />
+        </div>
+        <button class="btn btn-primary" id="btn-open-add">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          新增任務
+        </button>
+      </div>
+
+      <div class="filters-grid">
+        <!-- 分類多選 (OR 邏輯) -->
+        <div class="filter-group">
+          <span class="filter-title">任務分類：</span>
+          <div class="filter-options" id="category-filter-options">
+            <label class="chip checkbox-chip" data-cat="學業">
+              <input type="checkbox" value="學業"> 學業
+            </label>
+            <label class="chip checkbox-chip" data-cat="生活">
+              <input type="checkbox" value="生活"> 生活
+            </label>
+            <label class="chip checkbox-chip" data-cat="工作">
+              <input type="checkbox" value="工作"> 工作
+            </label>
+            <label class="chip checkbox-chip" data-cat="其他">
+              <input type="checkbox" value="其他"> 其他
+            </label>
+          </div>
+        </div>
+
+        <!-- 狀態篩選 (單選) -->
+        <div class="filter-group">
+          <span class="filter-title">任務狀態：</span>
+          <div class="filter-options" id="status-filter-options">
+            <button class="chip active" data-status="all">全部</button>
+            <button class="chip" data-status="pending">待完成</button>
+            <button class="chip" data-status="completed">已完成</button>
+          </div>
+        </div>
+
+        <!-- 逾期切換與清除按鈕 -->
+        <div class="filter-group">
+          <span class="filter-title">特殊篩選：</span>
+          <div class="filter-options">
+            <button class="toggle-chip" id="overdue-toggle-btn">⚠️ 只顯示已逾期</button>
+          </div>
+          <button class="clear-filter-btn" id="btn-clear-filters">清除搜尋與篩選</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. 任務清單與頂部工具列 -->
+    <main>
+      <div class="task-section-header">
+        <div class="task-section-title">任務清單</div>
+        <button class="btn btn-danger-text btn-sm" id="btn-clear-all" style="display: none;">清空全部任務</button>
+      </div>
+
+      <!-- 任務列表渲染容器 -->
+      <div class="task-list" id="task-list-container"></div>
+
+      <!-- 空清單提示 (無任何任務時顯示) -->
+      <div class="empty-state" id="empty-list-state" style="display: none;">
+        <span class="empty-icon">📝</span>
+        <div class="empty-title">目前還沒有任務</div>
+        <div class="empty-desc">開始建立您的第一個待辦事項，輕鬆掌握所有進度！</div>
+        <button class="btn btn-primary" id="btn-empty-add">新增第一個任務</button>
+      </div>
+
+      <!-- 搜尋無結果提示 (已有任務但篩選不到時顯示) -->
+      <div class="empty-state" id="empty-search-state" style="display: none;">
+        <span class="empty-icon">🔍</span>
+        <div class="empty-title">找不到符合條件的任務</div>
+        <div class="empty-desc">請嘗試調整關鍵字或重置篩選條件。</div>
+        <button class="btn" id="btn-search-reset">清除搜尋與篩選</button>
+      </div>
+    </main>
+  </div>
+
+  <!-- 5. 新增/編輯任務 Modal 彈出視窗 -->
+  <div class="modal-backdrop" id="task-modal-backdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-title">新增任務</h3>
+        <button class="modal-close" id="modal-close-btn">&times;</button>
+      </div>
+      <form id="task-form">
+        <div class="modal-body">
+          <input type="hidden" id="task-id" value="" />
+          
+          <div class="form-group">
+            <label for="task-name-input">任務名稱 <span class="required">*</span></label>
+            <input type="text" id="task-name-input" class="form-control" placeholder="請輸入任務名稱..." required />
+          </div>
+
+          <div class="form-group">
+            <label for="task-category-select">分類 <span class="required">*</span></label>
+            <select id="task-category-select" class="form-control" required>
+              <option value="學業">學業</option>
+              <option value="生活">生活</option>
+              <option value="工作">工作</option>
+              <option value="其他">其他</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="task-date-input">截止日期</label>
+            <input type="date" id="task-date-input" class="form-control" />
+          </div>
+
+          <div class="form-group">
+            <label for="task-notes-input">備註</label>
+            <textarea id="task-notes-input" class="form-control" placeholder="補充任務細節（選填）..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn" id="modal-cancel-btn">取消</button>
+          <button type="submit" class="btn btn-primary" id="modal-submit-btn">儲存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 6. 確認對話框 Modal (可用於刪除/清空) -->
+  <div class="modal-backdrop" id="confirm-modal-backdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="confirm-modal-title">確認操作</h3>
+        <button class="modal-close" id="confirm-close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="confirm-modal-message">您確定要執行此操作嗎？</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" id="confirm-cancel-btn">取消</button>
+        <button class="btn btn-primary" id="confirm-ok-btn">確定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. 短暫提示訊息容器 (Toast) -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- JavaScript 業務邏輯實現 -->
+  <script>
+    (function () {
+      'use strict';
+
+      /* -------------------------------------------------------------------------- */
+      /* A. 資料狀態與常數 (Data & State Management)                               */
+      /* -------------------------------------------------------------------------- */
+      const STORAGE_KEY = 'todo_list_app_data_v1';
+
+      // 應用程式核心資料狀態
+      let tasks = [];
+
+      // 搜尋與篩選狀態
+      let filterState = {
+        searchKeyword: '',
+        selectedCategories: [], // Array of string: ['學業', '生活']
+        status: 'all',          // 'all' | 'pending' | 'completed'
+        overdueOnly: false      // boolean
+      };
+
+      // 確認對話框的回調函數控制
+      let onConfirmAction = null;
+
+      /* -------------------------------------------------------------------------- */
+      /* B. DOM 元素快取                                                            */
+      /* -------------------------------------------------------------------------- */
+      const statTotalEl = document.getElementById('stat-total');
+      const statPendingEl = document.getElementById('stat-pending');
+      const statCompletedEl = document.getElementById('stat-completed');
+      const statRateEl = document.getElementById('stat-rate');
+
+      const searchInput = document.getElementById('search-input');
+      const categoryFilterContainer = document.getElementById('category-filter-options');
+      const statusFilterContainer = document.getElementById('status-filter-options');
+      const overdueToggleBtn = document.getElementById('overdue-toggle-btn');
+      const btnClearFilters = document.getElementById('btn-clear-filters');
+
+      const taskListContainer = document.getElementById('task-list-container');
+      const emptyListState = document.getElementById('empty-list-state');
+      const emptySearchState = document.getElementById('empty-search-state');
+      const btnClearAll = document.getElementById('btn-clear-all');
+
+      // Modal 相關
+      const taskModalBackdrop = document.getElementById('task-modal-backdrop');
+      const taskForm = document.getElementById('task-form');
+      const modalTitle = document.getElementById('modal-title');
+      const taskIdInput = document.getElementById('task-id');
+      const taskNameInput = document.getElementById('task-name-input');
+      const taskCategorySelect = document.getElementById('task-category-select');
+      const taskDateInput = document.getElementById('task-date-input');
+      const taskNotesInput = document.getElementById('task-notes-input');
+
+      const confirmModalBackdrop = document.getElementById('confirm-modal-backdrop');
+      const confirmModalTitle = document.getElementById('confirm-modal-title');
+      const confirmModalMessage = document.getElementById('confirm-modal-message');
+      const confirmOkBtn = document.getElementById('confirm-ok-btn');
+
+      const toastContainer = document.getElementById('toast-container');
+
+      /* -------------------------------------------------------------------------- */
+      /* C. 工具函數 (Helper Functions)                                             */
+      /* -------------------------------------------------------------------------- */
+
+      // 顯示 Toast 短暫訊息
+      function showToast(message, isError = false) {
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        if (isError) {
+          toast.style.background = '#ef4444';
+        }
+        toast.textContent = message;
+        toastContainer.appendChild(toast);
+
+        // 動畫觸發
+        setTimeout(() => toast.classList.add('show'), 10);
+
+        setTimeout(() => {
+          toast.classList.remove('show');
+          setTimeout(() => {
+            if (toast.parentNode) {
+              toast.parentNode.removeChild(toast);
+            }
+          }, 300);
+        }, 2500);
+      }
+
+      // 取得本地今天日期的字串 (YYYY-MM-DD)，用於精準比對逾期
+      function getTodayDateString() {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      }
+
+      // 判斷是否逾期：未完成、有截止日期、截止日期 < 今天
+      function isTaskOverdue(task) {
+        if (task.completed || !task.dueDate) return false;
+        const todayStr = getTodayDateString();
+        return task.dueDate < todayStr;
+      }
+
+      // 儲存至 localStorage
+      function saveTasks() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+        } catch (e) {
+          console.error('LocalStorage 寫入失敗:', e);
+          showToast('無法保存資料，請確認瀏覽器儲存空間或權限！', true);
+        }
+      }
+
+      // 從 localStorage 載入
+      function loadTasks() {
+        try {
+          const data = localStorage.getItem(STORAGE_KEY);
+          if (data) {
+            tasks = JSON.parse(data);
+          } else {
+            tasks = [];
+          }
+        } catch (e) {
+          console.error('LocalStorage 讀取失敗:', e);
+          tasks = [];
+          showToast('載入歷史資料失敗，已恢復預設。', true);
+        }
+      }
+
+      /* -------------------------------------------------------------------------- */
+      /* D. 核心渲染邏輯 (Rendering)                                                */
+      /* -------------------------------------------------------------------------- */
+
+      // 1. 更新全域統計資訊 (不受搜尋/篩選影響)
+      function renderStatistics() {
+        const total = tasks.length;
+        const completed = tasks.filter(t => t.completed).length;
+        const pending = total - completed;
+        const rate = total === 0 ? 0 : Math.round((completed / total) * 100);
+
+        statTotalEl.textContent = total;
+        statPendingEl.textContent = pending;
+        statCompletedEl.textContent = completed;
+        statRateEl.textContent = `${rate}%`;
+
+        // 是否顯示「清空全部任務」按鈕
+        btnClearAll.style.display = total > 0 ? 'inline-block' : 'none';
+      }
+
+      // 2. 依條件過濾任務 (Search & Filter Logic)
+      function getFilteredTasks() {
+        const todayStr = getTodayDateString();
+
+        return tasks.filter(task => {
+          // A. 名稱搜尋 (Case-insensitive)
+          if (filterState.searchKeyword.trim() !== '') {
+            const kw = filterState.searchKeyword.toLowerCase().trim();
+            if (!task.title.toLowerCase().includes(kw)) {
+              return false;
+            }
+          }
+
+          // B. 分類篩選 (多選 OR 邏輯)
+          if (filterState.selectedCategories.length > 0) {
+            if (!filterState.selectedCategories.includes(task.category)) {
+              return false;
+            }
+          }
+
+          // C. 狀態篩選 (AND)
+          if (filterState.status === 'pending' && task.completed) return false;
+          if (filterState.status === 'completed' && !task.completed) return false;
+
+          // D. 逾期篩選 (AND)
+          if (filterState.overdueOnly) {
+            if (task.completed || !task.dueDate || task.dueDate >= todayStr) {
+              return false;
+            }
+          }
+
+          return true;
+        });
+      }
+
+      // 3. 排序規則邏輯 (Sorting)
+      function sortTasks(taskList) {
+        return [...taskList].sort((a, b) => {
+          // 1. 未完成排在已完成之前
+          if (a.completed !== b.completed) {
+            return a.completed ? 1 : -1;
+          }
+
+          // 2. 若均為未完成，比對截止日期
+          if (!a.completed) {
+            if (a.dueDate && b.dueDate) {
+              if (a.dueDate !== b.dueDate) {
+                return a.dueDate.localeCompare(b.dueDate); // 近到遠
+              }
+            } else if (a.dueDate && !b.dueDate) {
+              return -1; // 有日期的排前
+            } else if (!a.dueDate && b.dueDate) {
+              return 1;  // 無日期的排後
+            }
+          }
+
+          // 3. 穩定排序：依建立時間或 ID 保持相對順序
+          return a.id - b.id;
+        });
+      }
+
+      // 4. 渲染任務清單主畫面
+      function renderTaskList() {
+        renderStatistics();
+
+        // 無任何任務時的畫面
+        if (tasks.length === 0) {
+          taskListContainer.innerHTML = '';
+          emptyListState.style.display = 'block';
+          emptySearchState.style.display = 'none';
+          return;
+        }
+
+        const filtered = getFilteredTasks();
+        const sorted = sortTasks(filtered);
+
+        // 已有任務但篩選無結果
+        if (sorted.length === 0) {
+          taskListContainer.innerHTML = '';
+          emptyListState.style.display = 'none';
+          emptySearchState.style.display = 'block';
+          return;
+        }
+
+        // 隱藏空提示
+        emptyListState.style.display = 'none';
+        emptySearchState.style.display = 'none';
+
+        // 構建 HTML
+        taskListContainer.innerHTML = sorted.map(task => {
+          const overdue = isTaskOverdue(task);
+          
+          // 類別標籤 Class
+          let catTagClass = 'tag-other';
+          if (task.category === '學業') catTagClass = 'tag-academic';
+          else if (task.category === '生活') catTagClass = 'tag-life';
+          else if (task.category === '工作') catTagClass = 'tag-work';
+
+          return `
+            <div class="task-item ${task.completed ? 'completed' : ''}" data-id="${task.id}">
+              <input 
+                type="checkbox" 
+                class="task-checkbox" 
+                ${task.completed ? 'checked' : ''} 
+                aria-label="標記完成狀態"
+                data-action="toggle"
+              />
+              <div class="task-content">
+                <div class="task-main-info">
+                  <span class="task-title">${escapeHtml(task.title)}</span>
+                  <span class="tag ${catTagClass}">${task.category}</span>
+                  ${task.dueDate ? `<span class="date-tag">📅 ${task.dueDate}</span>` : ''}
+                  ${overdue ? `<span class="overdue-tag">已逾期</span>` : ''}
+                </div>
+              </div>
+              <div class="task-actions">
+                <button class="btn btn-sm" data-action="edit">編輯</button>
+                <button class="btn btn-sm btn-danger-text" data-action="delete">刪除</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // HTML 轉義字元，防止 XSS
+      function escapeHtml(str) {
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      }
+
+      /* -------------------------------------------------------------------------- */
+      /* E. 互動邏輯與事件處理 (Actions)                                            */
+      /* -------------------------------------------------------------------------- */
+
+      // 開啟新增 Modal
+      function openAddModal() {
+        modalTitle.textContent = '新增任務';
+        taskIdInput.value = '';
+        taskNameInput.value = '';
+        taskCategorySelect.value = '學業';
+        taskDateInput.value = '';
+        taskNotesInput.value = '';
+        taskModalBackdrop.classList.add('active');
+        setTimeout(() => taskNameInput.focus(), 100);
+      }
+
+      // 開啟編輯 Modal
+      function openEditModal(task) {
+        modalTitle.textContent = '編輯任務';
+        taskIdInput.value = task.id;
+        taskNameInput.value = task.title;
+        taskCategorySelect.value = task.category;
+        taskDateInput.value = task.dueDate || '';
+        taskNotesInput.value = task.notes || '';
+        taskModalBackdrop.classList.add('active');
+        setTimeout(() => taskNameInput.focus(), 100);
+      }
+
+      // 關閉 Modal
+      function closeModal() {
+        taskModalBackdrop.classList.remove('active');
+      }
+
+      // 開啟通用確認視窗
+      function openConfirmModal(title, message, onConfirm) {
+        confirmModalTitle.textContent = title;
+        confirmModalMessage.textContent = message;
+        onConfirmAction = onConfirm;
+        confirmModalBackdrop.classList.add('active');
+      }
+
+      function closeConfirmModal() {
+        confirmModalBackdrop.classList.remove('active');
+        onConfirmAction = null;
+      }
+
+      // 儲存任務 (新增或編輯)
+      function handleTaskFormSubmit(e) {
+        e.preventDefault();
+
+        const title = taskNameInput.value.trim();
+        const category = taskCategorySelect.value;
+        const dueDate = taskDateInput.value;
+        const notes = taskNotesInput.value.trim();
+        const id = taskIdInput.value;
+
+        if (!title) {
+          showToast('任務名稱不可為空白！', true);
+          return;
+        }
+
+        if (id) {
+          // 編輯模式
+          const task = tasks.find(t => t.id == id);
+          if (task) {
+            task.title = title;
+            task.category = category;
+            task.dueDate = dueDate;
+            task.notes = notes;
+            showToast('任務已成功更新！');
+          }
+        } else {
+          // 新增模式
+          const newTask = {
+            id: Date.now(),
+            title: title,
+            category: category,
+            dueDate: dueDate,
+            notes: notes,
+            completed: false
+          };
+          tasks.push(newTask);
+          showToast('已新增待辦任務！');
+        }
+
+        saveTasks();
+        renderTaskList();
+        closeModal();
+      }
+
+      // 處理任務狀態切換/編輯/刪除點擊事件
+      function handleTaskListClick(e) {
+        const target = e.target;
+        const taskItem = target.closest('.task-item');
+        if (!taskItem) return;
+
+        const taskId = taskItem.dataset.id;
+        const task = tasks.find(t => t.id == taskId);
+        if (!task) return;
+
+        const action = target.dataset.action;
+
+        // 切換完成狀態
+        if (action === 'toggle' || target.classList.contains('task-checkbox')) {
+          task.completed = !task.completed;
+          saveTasks();
+          renderTaskList();
+          showToast(task.completed ? '已標記為完成！' : '已恢復為待完成');
+          return;
+        }
+
+        // 編輯
+        if (action === 'edit') {
+          openEditModal(task);
+          return;
+        }
+
+        // 刪除
+        if (action === 'delete') {
+          openConfirmModal('刪除任務', `確定要刪除「${task.title}」嗎？`, () => {
+            tasks = tasks.filter(t => t.id != taskId);
+            saveTasks();
+            renderTaskList();
+            showToast('任務已刪除');
+          });
+          return;
+        }
+      }
+
+      // 重置所有搜尋與篩選條件
+      function resetFilters() {
+        filterState.searchKeyword = '';
+        filterState.selectedCategories = [];
+        filterState.status = 'all';
+        filterState.overdueOnly = false;
+
+        // UI 元素同步
+        searchInput.value = '';
+        
+        // 分類選單 UI 同步
+        const checkboxes = categoryFilterContainer.querySelectorAll('input[type="checkbox"]');
+        checkboxes.forEach(cb => {
+          cb.checked = false;
+          cb.parentElement.classList.remove('active');
+        });
+
+        // 狀態按鈕 UI 同步
+        const statusBtns = statusFilterContainer.querySelectorAll('button');
+        statusBtns.forEach(btn => {
+          if (btn.dataset.status === 'all') {
+            btn.classList.add('active');
+          } else {
+            btn.classList.remove('active');
+          }
+        });
+
+        // 逾期按鈕 UI 同步
+        overdueToggleBtn.classList.remove('active');
+
+        renderTaskList();
+      }
+
+      /* -------------------------------------------------------------------------- */
+      /* F. 事件接聽綁定 (Event Listeners)                                          */
+      /* -------------------------------------------------------------------------- */
+      function bindEvents() {
+        // 新增按鈕觸發
+        document.getElementById('btn-open-add').addEventListener('click', openAddModal);
+        document.getElementById('btn-empty-add').addEventListener('click', openAddModal);
+
+        // Modal 關閉
+        document.getElementById('modal-close-btn').addEventListener('click', closeModal);
+        document.getElementById('modal-cancel-btn').addEventListener('click', closeModal);
+        taskModalBackdrop.addEventListener('click', (e) => {
+          if (e.target === taskModalBackdrop) closeModal();
+        });
+
+        // 任務表單送出
+        taskForm.addEventListener('submit', handleTaskFormSubmit);
+
+        // 清空全部任務
+        btnClearAll.addEventListener('click', () => {
+          openConfirmModal('警告：清空全部任務', '您確定要清空所有任務嗎？此動作將無法復原。', () => {
+            tasks = [];
+            saveTasks();
+            renderTaskList();
+            showToast('已清空全部任務');
+          });
+        });
+
+        // 確認 Modal 觸發
+        confirmOkBtn.addEventListener('click', () => {
+          if (typeof onConfirmAction === 'function') {
+            onConfirmAction();
+          }
+          closeConfirmModal();
+        });
+        document.getElementById('confirm-close-btn').addEventListener('click', closeConfirmModal);
+        document.getElementById('confirm-cancel-btn').addEventListener('click', closeConfirmModal);
+
+        // 任務清單內的點擊代理
+        taskListContainer.addEventListener('click', handleTaskListClick);
+
+        // 搜尋輸入事件 (即時搜尋)
+        searchInput.addEventListener('input', (e) => {
+          filterState.searchKeyword = e.target.value;
+          renderTaskList();
+        });
+
+        // 分類多選事件 (OR)
+        categoryFilterContainer.addEventListener('change', (e) => {
+          if (e.target.tagName === 'INPUT') {
+            const checkbox = e.target;
+            const cat = checkbox.value;
+            const parentLabel = checkbox.parentElement;
+
+            if (checkbox.checked) {
+              parentLabel.classList.add('active');
+              if (!filterState.selectedCategories.includes(cat)) {
+                filterState.selectedCategories.push(cat);
+              }
+            } else {
+              parentLabel.classList.remove('active');
+              filterState.selectedCategories = filterState.selectedCategories.filter(c => c !== cat);
+            }
+            renderTaskList();
+          }
+        });
+
+        // 狀態篩選按鈕事件
+        statusFilterContainer.addEventListener('click', (e) => {
+          if (e.target.tagName === 'BUTTON') {
+            const statusBtns = statusFilterContainer.querySelectorAll('button');
+            statusBtns.forEach(btn => btn.classList.remove('active'));
+            
+            e.target.classList.add('active');
+            filterState.status = e.target.dataset.status;
+            renderTaskList();
+          }
+        });
+
+        // 逾期單獨篩選切換
+        overdueToggleBtn.addEventListener('click', () => {
+          filterState.overdueOnly = !filterState.overdueOnly;
+          if (filterState.overdueOnly) {
+            overdueToggleBtn.classList.add('active');
+          } else {
+            overdueToggleBtn.classList.remove('active');
+          }
+          renderTaskList();
+        });
+
+        // 重置/清除搜尋與篩選
+        btnClearFilters.addEventListener('click', resetFilters);
+        document.getElementById('btn-search-reset').addEventListener('click', resetFilters);
+      }
+
+      /* -------------------------------------------------------------------------- */
+      /* G. 初始化 (Initialization)                                                 */
+      /* -------------------------------------------------------------------------- */
+      window.onload = function () {
+        loadTasks();
+        bindEvents();
+        renderTaskList();
+      };
+
+    })();
+  </script>
+</body>
+</html>
